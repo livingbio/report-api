@@ -6,6 +6,18 @@ external-data 的目的是提供一個通用的 資料 解決方案, 我們會�
 
 report 的部分主要就是負責定義report app framwork, 讓我們可以快速載入新得資料, 並且生成通用的 api 
 
+report golbal settings
+===
+REPORT_APIS = ["APP1", "APP2"] ## report application setting
+
+REPORT_SERVICE_ACCOUNT_P12 = ## SERVICE ACCOUNT P12 FILE
+REPORT_SERVICE_ACCOUNT_EMAIL = ## SERVICE ACCOUNT EMAIL
+REPORT_PROJECT_ID = ## GOOGLE APP PROJECT 
+REPORT_DATASET = ## BIGQUERY DATASET
+REPORT_BQ_LOG_PATH = ## BIGQUERY FILE PATH
+REPORT_REDIRECT_URI = ## OAUTH2 REDIRECT URI
+
+
 report app framwork
 ===
 
@@ -140,4 +152,18 @@ total| 總row 數
 fields| 欄位對應
 rows| 資料 [[fields], [fields], [fields]]
 pageToken| 下一頁的token
+
+
+upload_file
+---
+上傳資料
+
+```python
+python manage.py upload_data filepath table_prefix date
+```
+
+```python
+python manage.py upload_data filepath blub_report 2015-10-10
+```
+
 
