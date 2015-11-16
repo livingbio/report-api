@@ -19,11 +19,3 @@ REPORT_METERIC = (
     ("avg_elev", "avg(meteric3)", "平均深度")
 )
 
-MAPPING = {
-    "longitude": "dimension1",
-    "latitude": "dimension2",
-    "title": "dimension3",
-    "updated": "time",
-    "magnitude": "meteric2",
-    "elev": "meteric3",
-}
