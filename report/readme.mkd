@@ -27,7 +27,6 @@ REPORT_NAME| 資料名稱(給人看)
 TABLE_PREFIX| 資料名稱（儲存用prefix）
 REPORT_DIMENSIONS| 可用維度
 REPORT_METERIC| 可用指標
-MAPPING| 欄位對照表
 
 ### example earthquake
 settings.py
@@ -52,14 +51,7 @@ REPORT_METERIC = (
     ("avg_elev", "avg(meteric3)", "平均深度")
 )
 
-MAPPING = {
-    "longitude": "dimension1",
-    "latitude": "dimension2",
-    "title": "dimension3",
-    "updated": "time",
-    "magnitude": "meteric2",
-    "elev": "meteric3"
-}
+
 ```
 
 ## urls.py
