@@ -1,0 +1,151 @@
+序
+---
+
+external-data 的目的是提供一個通用的 資料 解決方案, 我們會去介接各式不同的資料來源並且做成通用的 external api,
+統一 api 的query 方式並且做權限管理！！
+
+report 的部分主要就是負責定義report app framwork, 讓我們可以快速載入新得資料, 並且生成通用的 api 
+
+report app framwork
+===
+
+基礎設定
+
+```
+__init__.py
+├── settings.py  
+└── urls.py
+```
+
+和django app 一樣, 不過主要需要定義兩塊
+## settings.py
+基本設定, 定義該資料和table的欄位對應和可使用的維度＆指標
+
+name| description
+---|---
+REPORT_NAME| 資料名稱(給人看)
+TABLE_PREFIX| 資料名稱（儲存用prefix）
+REPORT_DIMENSIONS| 可用維度
+REPORT_METERIC| 可用指標
+MAPPING| 欄位對照表
+
+### example earthquake
+settings.py
+```
+REPORT_NAME = "地震資料"
+TABLE_PREFIX = "earthquake"
+REPORT_DIMENSIONS = (
+    ("longitude", "dimension1", u"經度"),
+    ("latitude", "dimension2", u"緯度"),
+    ("title", "dimension3", u"標題"),
+    ("date", "STRFTIME_UTC_USEC(time, '%Y-%m-%d')", u"日期"),
+    ("month", "STRFTIME_UTC_USEC(time, '%Y-%m')", u"月份"),
+    ("year", "STRFTIME_UTC_USEC(time, '%Y')", u"年份"),
+    ("updated", "time", u"時間"),
+)
+
+REPORT_METERIC = (
+    ("total", "sum(1)", u"總數"),
+    ("magnitude", "meteric2", u"震度"),
+    ("avg_magnitude", "avg(meteric2)", "平均震度"),
+    ("elev", "meteric3", "深度"),
+    ("avg_elev", "avg(meteric3)", "平均深度")
+)
+
+MAPPING = {
+    "longitude": "dimension1",
+    "latitude": "dimension2",
+    "title": "dimension3",
+    "updated": "time",
+    "magnitude": "meteric2",
+    "elev": "meteric3"
+}
+```
+
+## urls.py
+定義可使用的api
+
+### example earthquake
+urls.py
+``` 
+from report.views import ExportReportApi, TimeReportApi
+from report.models import Report
+from earthquake import settings
+from report.urls import ReportRouter
+
+earthquake_report = Report.objects.get(prefix='earthquake')
+
+earthquake_router = ReportRouter()
+earthquake_router.register(
+    'earthquakeApi',
+    ExportReportApi(
+        report=earthquake_report,
+        custom_filters=[
+            ("start_day", "st", "起始時間", "2015-09-01", "time > timestamp('{}')"),
+            ("end_day", "ed", "結束時間", "2015-10-01", "time < timestamp('{}')"),
+        ],
+    )
+)
+
+earthquake_router.register(
+    'avg_magnitude_by_time',
+    TimeReportApi(
+        report=earthquake_report,
+        meterics=["avg_magnitude"],
+        custom_filters=[
+            ("start_day", "st", "起始時間", "2015-09-01", "time > timestamp('{}')"),
+            ("end_day", "ed", "結束時間", "2015-10-01", "time < timestamp('{}')"),
+        ],
+    )
+)
+
+from report.urls import weather_router
+weather_router.register('earthquake', earthquake_router)
+```
+
+
+## report view program interface
+通用的 api view
+
+name| desc
+---|---
+ExportReportApi| 單筆資料輸出api, 不做處理
+TimeReportApi| 日期報表 api
+
+###通用參數 params
+name| desc
+---|---
+report| 資料表
+custom_filters| 可使用的filter
+desc| api 說明文件
+cols| 輸出欄位
+
+
+###TimeReportApi params
+
+name| desc
+---|---
+meterics| 統計指標
+default_interval| 預設時間區間
+
+
+## report view api interface
+通用report api view http 參數
+
+request:
+
+method: GET
+
+name| desc
+---|---
+__pageToken| 下一頁的token
+
+response:
+
+name| desc
+---|---
+total| 總row 數
+fields| 欄位對應
+rows| 資料 [[fields], [fields], [fields]]
+pageToken| 下一頁的token
+
