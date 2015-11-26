@@ -72,7 +72,7 @@ def download(path, service, project_id):
     pass
 
 
-def get_service(client_secrets, redirect_uri, project_id, http=None):
+def get_service( redirect_uri, project_id, http=None, client_secrets=None):
     from functools import partial
     if not http:
         http = core.build_http(client_secrets, SCOPES, redirect_uri)

@@ -1,0 +1,15 @@
+-r requirements.txt
+django-bootstrap3-sass
+django-braces==1.8.1
+django-compressor==1.4
+django-crispy-forms==1.5.2
+django-debug-toolbar
+django-extensions
+django-filter
+pytest
+pytest-django
+mock
+Unipath==1.0
+glue==0.11.1
+logutils>=0.3.3
+fake-factory==0.5.3
