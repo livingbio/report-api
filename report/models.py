@@ -1,4 +1,5 @@
 # Create your models here.
+# -*- coding: utf-8 -*-
 from django.db import models
 from report import settings as report_settings
 from django.core.validators import RegexValidator
@@ -122,7 +123,7 @@ class ReportQuery(object):
         md5.update(str(pageSize))
         md5.update(str(pageToken))
         key = md5.hexdigest()
-    
+
         value = cache.get(key, False)
 
         if not value:
@@ -144,7 +145,7 @@ class Report(models.Model):
     tags = models.ManyToManyField(ReportTag, null=True, blank=True)
 
     def __repr__(self):
-        return self.name
+        return self.name.encode('utf-8')
 
     def __str__(self):
         return self.name.encode('utf-8')
@@ -166,7 +167,7 @@ class Report(models.Model):
         for table_name in table_names:
             try:
                 prefix, table_key = table_name.split("___")
-                assert report.prefix == prefix
+                assert self.prefix == prefix
                 Table.objects.get_or_create(report=self, key=table_key)
             except Exception as e:
                 pass
@@ -183,7 +184,7 @@ class Report(models.Model):
         for key, value in data.items():
             if self.key_mapping.has_key(key):
                 output[self.key_mapping[key]] = value
-        
+
         ## trans time into bigquery time
         if output.has_key('time'):
             if isinstance(output['time'], basestring):
@@ -283,6 +284,7 @@ class ReportDimension(ReportCol):
 
     class Meta:
         proxy = True
+        verbose_name = u'dimension'
 
 
 # numbic
@@ -300,3 +302,4 @@ class ReportMeteric(ReportCol):
 
     class Meta:
         proxy = True
+        verbose_name = u'meteric'

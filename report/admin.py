@@ -30,9 +30,12 @@ class ReportColAdmin(admin.ModelAdmin):
     list_display = ['name', 'report', 'key', 'query']
     list_filter = ['report']
 
-admin.site.register(models.ReportTag)
+class TableAdmin(admin.ModelAdmin):
+    list_display = [ 'id', 'report', 'key']
+
+#admin.site.register(models.ReportTag)
 admin.site.register(models.Report, ReportAdmin)
-admin.site.register(models.Table)
-admin.site.register(models.ReportCol, ReportColAdmin)
+admin.site.register(models.Table, TableAdmin)
+#admin.site.register(models.ReportCol, ReportColAdmin)
 admin.site.register(models.ReportDimension, ReportDimensionAdmin)
 admin.site.register(models.ReportMeteric, ReportMetericAdmin)
