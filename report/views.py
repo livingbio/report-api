@@ -20,7 +20,7 @@ def projection(data):
     return result
 
 
-class ReportApiView(APIView):
+class BaseApiView(APIView):
     _report = []
     _base_filters = [("PageToken", "__pageToken", "page token for nex page",
                       "BG7AJWVXKAAQAAASAUIIBAEAAUNAICAKCAFCBMFOCU======", "")]
@@ -30,8 +30,8 @@ class ReportApiView(APIView):
     _cols = []
     _bigquery = None
 
-    def __init__(self, report, custom_filters=(), desc="", cols=[], **kwargs):
-        super(ReportApiView, self).__init__(
+    def __init__(self, report, custom_filters=[], desc="", cols=[], **kwargs):
+        super(BaseApiView, self).__init__(
             report=report, custom_filters=custom_filters, **kwargs)
         self._report = report
         self._custom_filters = custom_filters
@@ -48,7 +48,7 @@ class ReportApiView(APIView):
         return self._base_filters + self._default_filters + self._custom_filters
 
     def as_view(self, *args, **kwargs):
-        def view(request):
+        def view(request, *args, **kwargs):
             return self.dispatch(request, *args, **kwargs)
         return view
 
@@ -83,21 +83,21 @@ class ReportApiView(APIView):
         return Response(result)
 
 
-class ExportReportApi(ReportApiView):
+class ExportReportApi(BaseApiView):
 
     def __init__(self, *args, **kwargs):
         super(ExportReportApi, self).__init__(*args, **kwargs)
-        self._cols = self.cols or self._report.cols.filter(type='dimension')
+        self._cols = self.cols or list(self._report.cols.filter(type='dimension'))
 
 
-class RawQueryApi(ReportApiView):
+class RawQueryApi(BaseApiView):
 
     def __init__(self, query_template, *args, **kwargs):
         super(RawQueryApi, self).__init__(*args, **kwargs)
         self.bigquery.set_query_template(query_template)
 
 
-class TimeReportApi(ReportApiView):
+class TimeReportApi(BaseApiView):
     _dimensions = []
     _meterics = []
     _default_filters = [
@@ -119,3 +119,42 @@ class TimeReportApi(ReportApiView):
     def desc(self):
         col_names = [col.name.encode('utf-8') for col in self._cols]
         return "{} by 時間(date|month|year)".format(",".join(col_names))
+
+
+
+from . import models as report_models
+
+class ReportRootView(APIView):
+    def get(self, *args, **kwargs):
+        groups = report_models.ReportGroup.objects.all()
+        result = groups.values('name', 'description')
+        return Response(result)
+
+class ReportGroupView(APIView):
+    def get(self, *args, **kwargs):
+        group = kwargs.get('group')
+
+        group = report_models.ReportGroup.objects.get(name=group)
+        reports = report_models.Report.objects.filter(group=group)
+        result = reports.values("name", "description")
+        return Response(result)
+
+class ReportReportView(APIView):
+    def get(self, *args, **kwargs):
+        group = kwargs.get('group')
+        report = kwargs.get('report')
+
+        report = report_models.Report.objects.get(prefix=report)
+        apis = report.apis.all()
+        result = apis.values("name", "description")
+        return Response(result)
+
+class ReportApiView(APIView):
+    def get(self, *args, **kwargs):
+        group = kwargs.get('group')
+        report = kwargs.get('report')
+        api = kwargs.get('api')
+        report = report_models.Report.objects.get(prefix=report)
+        api = report_models.ReportApi.objects.get(name=api)
+        view = api.view(report)
+        return view(*args, **kwargs)

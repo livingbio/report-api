@@ -134,15 +134,74 @@ class ReportQuery(object):
         return value
 
 
-class ReportTag(models.Model):
-    name = models.CharField(max_length=1024)
+REPORT_KEY_TYPES = (
+    ('meteric', 'meteric'),
+    ('dimension', 'dimension')
+)
 
+
+
+class ReportCol(models.Model):
+    name = models.CharField(max_length=1024)
+    key = models.CharField(max_length=1024)
+    report = models.ForeignKey("report.Report", related_name="cols", null=True, blank=True)
+
+    type = models.CharField(max_length=100, choices=REPORT_KEY_TYPES)
+    query = models.CharField(max_length=1024)
+
+    def filter(self, operation, value):
+        query = self.operation_mapping[operation].format(value)
+        return (self.key, query)
+
+    def get_query(self):
+        return "{} as {}".format(self.query, self.key)
+
+    class Meta:
+        unique_together = ('report', 'key', 'type')
+
+
+
+class Filter(models.Model):
+    name = models.CharField(max_length=1024)
+    key = models.CharField(max_length=1024)
+    col = models.ForeignKey(ReportCol)
+    query = models.TextField()
+    description = models.TextField()
+
+
+class ReportApi(models.Model):
+    name = models.CharField(max_length=1024)
+    cols = models.ManyToManyField(ReportCol)
+    custom_filter = models.ManyToManyField(Filter, null=True, blank=True)
+    mode = models.CharField(max_length=1024, choices=[('TimeReportApi', 'TimeReportApi'), ('ExportReportApi', 'ExportReportApi')], default='ExportReportApi')
+    live = models.BooleanField(default=True)
+    description = models.TextField()
+
+    def view(self, report):
+        from .views import ReportApiView, ExportReportApi
+        api_view = locals()[self.mode]
+        return api_view(
+                    report=report,
+                    cols=self.cols.all(),
+                    custom_filter=self.custom_filter
+                ).as_view()
+
+class ReportGroup(models.Model):
+    name = models.CharField(max_length=1024)
+    description = models.TextField(max_length=1024)
+    live = models.BooleanField(default=True)
+
+    def urls(self):
+        pass
 
 class Report(models.Model):
     dataset = report_settings.DATASET
     name = models.CharField(max_length=1024)
     prefix = models.CharField(max_length=255, unique=True, validators=[RegexValidator(regex=".*___.*", inverse_match=True), RegexValidator(regex="[a-zA-Z-0-9]+")])
-    tags = models.ManyToManyField(ReportTag, null=True, blank=True)
+    group = models.ForeignKey(ReportGroup, null=True, blank=True)
+    apis = models.ManyToManyField(ReportApi, null=True, blank=True)
+    live = models.BooleanField(default=True)
+    description = models.TextField(null=True, blank=True)
 
     def __repr__(self):
         return self.name.encode('utf-8')
@@ -194,6 +253,13 @@ class Report(models.Model):
         return output
 
 
+class ReportTag(models.Model):
+    name = models.CharField(max_length=1024)
+    description = models.TextField(max_length=1024)
+    apis = models.ManyToManyField(Report)
+
+
+
 class Table(models.Model):
     report = models.ForeignKey(Report, related_name="tables")
     # table name in bigquery
@@ -229,30 +295,6 @@ class Table(models.Model):
         result = bigquery.write_table(self.table_name, gs_path, async=False)
         return result
 
-
-REPORT_KEY_TYPES = (
-    ('meteric', 'meteric'),
-    ('dimension', 'dimension')
-)
-
-
-class ReportCol(models.Model):
-    name = models.CharField(max_length=1024)
-    key = models.CharField(max_length=1024)
-    report = models.ForeignKey(Report, related_name="cols")
-
-    type = models.CharField(max_length=100, choices=REPORT_KEY_TYPES)
-    query = models.CharField(max_length=1024)
-
-    def filter(self, operation, value):
-        query = self.operation_mapping[operation].format(value)
-        return (self.key, query)
-
-    def get_query(self):
-        return "{} as {}".format(self.query, self.key)
-
-    class Meta:
-        unique_together = ('report', 'key', 'type')
 
 
 class MetericManager(models.Manager):

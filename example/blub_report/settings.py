@@ -1,4 +1,5 @@
 # -*- encoding=utf8 -*-
+GROUP = "iot"
 REPORT_NAME = "智慧燈泡"
 TABLE_PREFIX = "blub"
 
