@@ -75,7 +75,7 @@ class ReportRegistedTests(TestCase):
         api = ReportApi.objects.create(
                     name="test",
                 )
-        api.cols = self.report.cols.filter(type='dimension')[:5]
+        api.cols = self.report.cols.filter(key__in=['time', 'year', 'weekday', 'month', 'date'])[:5]
         api.save()
         resp = self.client.get(reverse('report:api', kwargs={"group":"iot", "report": "blub", "api": "test"}))
         self.mock_bigquery_query.assert_called_once_with(pageSize=100, pageToken=None, query="\n        select time as time,STRFTIME_UTC_USEC(time, '%Y-%m-%d') as date,STRFTIME_UTC_USEC(time, '%Y-%m') as month,STRFTIME_UTC_USEC(time, '%Y') as year,DAYOFWEEK(time) as weekday\n \n        from iot.blub___20151001,iot.blub___20151002,iot.blub___20151003,iot.blub___20151004,iot.blub___20151005,iot.blub___20151006,iot.blub___20151007,iot.blub___20151008,iot.blub___20151009,iot.blub___20151010\n \n        where  True \n        \n        \n        \n        ignore case\n    ")
