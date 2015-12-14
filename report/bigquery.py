@@ -48,11 +48,6 @@ def create_job(query, udfs=[]):
     body['configuration']['query'] = {}
     body['configuration']['query']['query'] = query
     body['configuration']['query']['userDefinedFunctionResources'] = [{"inlineCode": code} for code in udfs]
-    print query
-    print '---'
-    print body['configuration']['query']['userDefinedFunctionResources'][0]['inlineCode']
-    print '---'
-    print body['configuration']['query']['userDefinedFunctionResources'][1]['inlineCode']
     return service.jobs().insert(projectId=settings.PROJECT_ID, body=body).execute()['jobReference']['jobId']
 
 
