@@ -2,6 +2,8 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.exceptions import Throttled
+from django.core.urlresolvers import reverse
+import json
 
 
 def projection(data):
@@ -22,8 +24,12 @@ def projection(data):
 
 class BaseApiView(APIView):
     _report = []
-    _base_filters = [("PageToken", "__pageToken", "page token for nex page",
-                      "BG7AJWVXKAAQAAASAUIIBAEAAUNAICAKCAFCBMFOCU======", "")]
+    _base_filters = [
+                        ("PageToken", "__pageToken", "page token for nex page","BG7AJWVXKAAQAAASAUIIBAEAAUNAICAKCAFCBMFOCU======", ""),
+
+                        ("mappre function", "__mapper", "mapper js function", """function(v1, v2){return {"key":key, "value": value} }""", ""),
+                        ("reduce function", "__reducer", "reduce js function", """function(key, values){return {"result": result}}""", ""), 
+                      ]
     _default_filters = []
     _custom_filters = []
     _http_method_names = ["get", "post"]
@@ -67,9 +73,52 @@ class BaseApiView(APIView):
     def before(self, request):
         self._bigquery = self._report.bigquery()
         for name, key, desc, example, template in self._filters:
-            value = request.REQUEST.get(key, False)
+            value = request.data.get(key, False)
             if value and not key.startswith('__'):
                 self.bigquery.filter([(key, template.format(value))])
+        mapper = request.POST.get('__mapper', '').strip()
+        reducer = request.POST.get('__reducer', '').strip()
+        if mapper and reducer:
+            query_template = '''
+            select key, result  
+            from reducer(
+                select key, nest(value) 
+                from mapper(
+                        select {col_query}
+                        from {table_query}
+                        where {filter_query}
+                        {group_query}
+                        {order_query}
+                        ignore case
+                    )
+                group by key
+            )   
+            {limit_query}
+            '''
+
+            mapper = '''
+            bigquery.defineFunction(
+              'mapper', 
+              %s,
+              [{name: 'key', type: 'string'}, {name: 'result', type:'string'}],
+              %s
+            );
+
+            ''' % (json.dumps([col.name for col in self.cols]), mapper)
+
+            mapper = '''
+            bigquery.defineFunction(
+              'reducer', 
+              ['key', 'result'],
+              [{name: 'key', type: 'string'}, {name: 'result', type:'string'}],
+              %s
+            );
+            ''' % (reducer)
+
+
+            self.bigquery.query_template = query_template
+            self.bigquery.udfs = [mapper, reducer]
+
         self.bigquery.values(self.cols)
 
     def after(self, request, result):
@@ -77,10 +126,13 @@ class BaseApiView(APIView):
 
     def get(self, request, *args, **kwargs):
         self.before(request)
-        pageToken = request.REQUEST.get('__pageToken', None)
+        pageToken = request.data.get('__pageToken', None)
         result = self.bigquery.execute(pageToken=pageToken)
         result = self.after(request, result)
         return Response(result)
+
+    def post(self, request, *args, **kwargs):
+        return self.get(request, *args, **kwargs)
 
 
 class ExportReportApi(BaseApiView):
@@ -103,14 +155,14 @@ class TimeReportApi(BaseApiView):
     _default_filters = [
         ("Time interval", "__time", "時間區間(year|date|month|weekday)", "year", "")]
 
-    def __init__(self, meterics=[], default_interval='date', *args, **kwargs):
+    def __init__(self, cols=[], default_interval='date', *args, **kwargs):
         super(TimeReportApi, self).__init__(*args, **kwargs)
-        self._cols = list(self._report.cols.filter(key__in=meterics))
+        self._cols = cols
 
         self.default_interval = default_interval
 
     def before(self, request):
-        time_iterval = request.REQUEST.get("__time", self.default_interval)
+        time_iterval = request.data.get("__time", self.default_interval)
         dimension = self._report.cols.get(key=time_iterval)
         super(TimeReportApi, self).before(request)
         self.bigquery.values(self._cols + [dimension])
@@ -128,15 +180,18 @@ class ReportRootView(APIView):
     def get(self, *args, **kwargs):
         groups = report_models.ReportGroup.objects.all()
         result = groups.values('name', 'description')
+        for data in result:
+            data['url'] = reverse('report:group', kwargs={"group": data["name"]})
         return Response(result)
 
 class ReportGroupView(APIView):
     def get(self, *args, **kwargs):
         group = kwargs.get('group')
-
         group = report_models.ReportGroup.objects.get(name=group)
         reports = report_models.Report.objects.filter(group=group)
-        result = reports.values("name", "description")
+        result = reports.values("name", "description", "prefix")
+        for data in result:
+            data['url'] = reverse('report:report', kwargs={"group": kwargs["group"], "report": data["prefix"]})
         return Response(result)
 
 class ReportReportView(APIView):
@@ -146,10 +201,23 @@ class ReportReportView(APIView):
 
         report = report_models.Report.objects.get(prefix=report)
         apis = report.apis.all()
-        result = apis.values("name", "description")
+        result = []
+        for api in apis:
+            api_info = {}
+            api_info['name'] = api.name
+            api_info['description'] = api.description
+            view = api.view_class(report)
+            api_info['filters'] = [{"name": f[0].decode('utf-8'), "key":f[1], "description": f[2].decode('utf-8'), "example": f[3].decode('utf-8')} for f in view._filters]
+            api_info['url'] = reverse('report:api', kwargs={"group": group, "report": report.prefix, "api": api.name})
+            result.append(api_info)
         return Response(result)
 
 class ReportApiView(APIView):
+    def __init__(self, *args, **kwargs):
+        self.post = self.get
+        super(ReportApiView, self).__init__(*args, **kwargs)
+
+
     def get(self, *args, **kwargs):
         group = kwargs.get('group')
         report = kwargs.get('report')
@@ -158,3 +226,25 @@ class ReportApiView(APIView):
         api = report_models.ReportApi.objects.get(name=api)
         view = api.view(report)
         return view(*args, **kwargs)
+
+class ReportMapreduceView(APIView):
+    def get(self, *args, **kwargs):
+        group = kwargs.get('group')
+        report = kwargs.get('report')
+        api = kwargs.get('api')
+        report = report_models.Report.objects.get(prefix=report)
+        api = report_models.ReportApi.objects.get(name=api)
+        view = api.view(report)
+        return view(*args, **kwargs)
+
+class QuickReportCreate(APIView):
+    def post(self, request, *args, **kwargs):
+        import csv
+        group = kwargs.get('group')
+        datas = csv.DictReader(request.FILE.get("datas"))
+        request.data.get('report')
+        report = report_models.Report.quick_create(datas)
+        report.group = report_models.ReportGroup.get(name=group)
+        report.save()
+        return Response({"status": "0"})
+

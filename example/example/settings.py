@@ -21,7 +21,7 @@ def get_env_setting(setting):
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
 
-PROJECT_DIR = Path(__file__).ancestor(3)
+PROJECT_DIR = Path(__file__).ancestor(2)
 MEDIA_ROOT = PROJECT_DIR.child("media")
 STATIC_ROOT = PROJECT_DIR.child("assets")
 
@@ -224,7 +224,7 @@ REPORT_SERVICE_ACCOUNT_P12 = os.path.join(PROJECT_DIR, "test.p12")
 REPORT_SERVICE_ACCOUNT_EMAIL = 'test@developer.gserviceaccount.com'
 REPORT_PROJECT_ID = "test"
 REPORT_DATASET = "iot"
-REPORT_BQ_LOG_PATH = "gs://test/"
+REPORT_BQ_LOG_PATH = "gs://dmp_track/iot/"
 
 REPORT_REDIRECT_URI = "http://localhost:8080/"
 

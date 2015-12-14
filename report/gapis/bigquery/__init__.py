@@ -41,8 +41,17 @@ def job_status(job_id, service, project_id):
 
 
 def get_tables(dataset, service, project_id):
-    result = service.tables().list(projectId=project_id, datasetId=dataset).execute().get('tables', [])
-    return result
+    pageToken=None
+    while True:
+        result = service.tables().list(projectId=project_id, datasetId=dataset, pageToken=pageToken).execute()
+        tables = result.get('tables', [])
+        for table in tables:
+            yield table
+        pageToken = result.get('nextPageToken', None)
+
+        if not pageToken:
+            break
+        
 
 
 def stream_row_to_bigquery(table, dataset_id, rows, service, project_id, num_retries=5):
@@ -62,7 +71,7 @@ def query(query, pageSize=100, pageToken=None, timeout=10000, num_retries=5, ser
         'query': query,
         'timeoutMs': timeout,
         'maxResults': pageSize,
-        'pageToken': pageToken
+        'pageToken': pageToken,
     }
     result = service.jobs().query(
         projectId=project_id,
@@ -70,6 +79,22 @@ def query(query, pageSize=100, pageToken=None, timeout=10000, num_retries=5, ser
     ).execute(num_retries=num_retries)
 
     return result
+
+def create_job(query, pageSize=100, pageToken=None, timeout=10000, num_retries=5, service=None, project_id=None, udfs=[]):
+    query_data = {
+        'query': query,
+        'timeoutMs': timeout,
+        'maxResults': pageSize,
+        'pageToken': pageToken,
+        'userDefinedFunctionResources': udfs,
+    }
+    result = service.jobs().query(
+        projectId=project_id,
+        body=query_data
+    ).execute(num_retries=num_retries)
+
+    return result
+
 
 
 def get_service(redirect_uri, project_id, http=None, client_secrets=None):

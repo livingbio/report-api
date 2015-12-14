@@ -6,7 +6,7 @@ from report.models import Report, ReportCol, Table
 import re
 from blub_report import settings
 import json
-
+from report.utils import register_app
 faker = Faker()
 
 class ReportRegistedTests(TestCase):
@@ -23,8 +23,7 @@ class ReportRegistedTests(TestCase):
 
 
     def test_report_registed(self):
-        from report.utils import register_api
-        register_api(settings)
+        register_app("blub_report")
         Report.objects.get(name=settings.REPORT_NAME)
 
 
@@ -32,8 +31,7 @@ class ReportRegistedTests(TestCase):
         ##
         #  test col registed
         ##
-        from report.utils import register_api
-        register_api(settings)
+        register_app("blub_report")
 
         report = Report.objects.get(name=settings.REPORT_NAME)
 
@@ -52,16 +50,17 @@ class ReportRegistedTests(TestCase):
             self.assertEqual(col.type, 'dimension')
 
     def test_table_synced(self):
-        from report.utils import register_api
-        register_api(settings)
+        register_app("blub_report")
 
         report = Report.objects.get(name=settings.REPORT_NAME)
 
         self.assertEqual(report.tables.count(), 10)
 
+    def test_api_register(self):
+        pass
+
 class ReportQueryTest(TestCase):
     def setUp(self):
-        from report.utils import register_api
 
         self.get_tables_patcher = patch("report.bigquery.get_tables")
         self.mock_get_tables = self.get_tables_patcher.start()
@@ -81,8 +80,7 @@ class ReportQueryTest(TestCase):
         self.bigquery_write_table_patcher = patch("report.bigquery.write_table")
         self.mock_write_table = self.bigquery_write_table_patcher.start()
 
-        from report.utils import register_api
-        register_api(settings)
+        register_app("blub_report")
 
         self.report = Report.objects.get(prefix=settings.TABLE_PREFIX)
 
@@ -114,3 +112,16 @@ class ReportQueryTest(TestCase):
 
         self.assertEqual(self.mock_write_table.call_count, 1)
         self.assertEqual(self.mock_upload.call_count, 1)
+
+    def test_quick_create_report(self):
+        from datetime import datetime
+        datas = [{"time": datetime(2015,11,26), "key": "test", "value": 123}]
+        Report.quick_create("test_report", datas)
+        report = Report.objects.get(name="test_report")
+        self.assertEqual(report.cols.all().count(), 2)
+
+
+        self.assertEqual(self.mock_write_table.call_count, 1)
+        self.assertEqual(self.mock_upload.call_count, 1)
+
+
