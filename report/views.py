@@ -82,7 +82,7 @@ class BaseApiView(APIView):
             query_template = '''
             select key, result  
             from reducer(
-                select key, nest(value) 
+                select key, nest(value) as result
                 from mapper(
                         select {col_query}
                         from {table_query}
@@ -100,13 +100,13 @@ class BaseApiView(APIView):
             bigquery.defineFunction(
               'mapper', 
               %s,
-              [{name: 'key', type: 'string'}, {name: 'result', type:'string'}],
+              [{name: 'key', type: 'string'}, {name: 'value', type:'string'}],
               %s
             );
 
-            ''' % (json.dumps([col.name for col in self.cols]), mapper)
+            ''' % (json.dumps([col.key for col in self.cols]), mapper)
 
-            mapper = '''
+            reducer = '''
             bigquery.defineFunction(
               'reducer', 
               ['key', 'result'],

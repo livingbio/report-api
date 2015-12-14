@@ -48,12 +48,20 @@ def create_job(query, udfs=[]):
     body['configuration']['query'] = {}
     body['configuration']['query']['query'] = query
     body['configuration']['query']['userDefinedFunctionResources'] = [{"inlineCode": code} for code in udfs]
+    print query
+    print '---'
+    print body['configuration']['query']['userDefinedFunctionResources'][0]['inlineCode']
+    print '---'
+    print body['configuration']['query']['userDefinedFunctionResources'][1]['inlineCode']
     return service.jobs().insert(projectId=settings.PROJECT_ID, body=body).execute()['jobReference']['jobId']
 
 
 def getJobResults(jobId, maxResults=None, pageToken=None):
     service = get_service()
-    return service.jobs().getQueryResults(projectId=settings.PROJECT_ID, jobId=jobId, maxResults=maxResults, pageToken=pageToken).execute()
+    try:
+        return service.jobs().getQueryResults(projectId=settings.PROJECT_ID, jobId=jobId, maxResults=maxResults, pageToken=pageToken).execute()
+    except Exception as e:
+        import pdb;pdb.set_trace()
 
 def get_service():
     from report.gapis import bigquery
