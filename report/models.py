@@ -358,7 +358,7 @@ class Report(models.Model):
                 )
                 meteric_idx+=1
             except:
-                ReportMeteric.objects.get_or_create(
+                ReportDimension.objects.get_or_create(
                     type='dimension',
                     report=report,
                     key="dimension{}".format(meteric_idx)

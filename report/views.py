@@ -212,6 +212,17 @@ class ReportReportView(APIView):
             result.append(api_info)
         return Response(result)
 
+    def post(self, request, *args, **kwargs):
+        import csv
+        group = kwargs.get('group')
+        report = kwargs.get('report')
+        datas = csv.DictReader(request.data.get("datas"))
+        request.data.get('report')
+        report = report_models.Report.quick_create(report, datas)
+        report.group = report_models.ReportGroup.objects.get(name=group)
+        report.save()
+        return Response({"status": "0"})
+
 class ReportApiView(APIView):
     def __init__(self, *args, **kwargs):
         self.post = self.get
@@ -227,24 +238,5 @@ class ReportApiView(APIView):
         view = api.view(report)
         return view(*args, **kwargs)
 
-class ReportMapreduceView(APIView):
-    def get(self, *args, **kwargs):
-        group = kwargs.get('group')
-        report = kwargs.get('report')
-        api = kwargs.get('api')
-        report = report_models.Report.objects.get(prefix=report)
-        api = report_models.ReportApi.objects.get(name=api)
-        view = api.view(report)
-        return view(*args, **kwargs)
 
-class QuickReportCreate(APIView):
-    def post(self, request, *args, **kwargs):
-        import csv
-        group = kwargs.get('group')
-        datas = csv.DictReader(request.FILE.get("datas"))
-        request.data.get('report')
-        report = report_models.Report.quick_create(datas)
-        report.group = report_models.ReportGroup.get(name=group)
-        report.save()
-        return Response({"status": "0"})
 
