@@ -56,7 +56,7 @@ def getJobResults(jobId, maxResults=None, pageToken=None):
     try:
         return service.jobs().getQueryResults(projectId=settings.PROJECT_ID, jobId=jobId, maxResults=maxResults, pageToken=pageToken).execute()
     except Exception as e:
-        import pdb;pdb.set_trace()
+        print e.message
 
 def get_service():
     from report.gapis import bigquery
