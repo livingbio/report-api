@@ -14,7 +14,7 @@ def projection(data):
         raise Throttled(5)
 
     result = {}
-    result['rows'] = [[v['v'] for v in r['f']] for r in data['rows']]
+    result['rows'] = [[v['v'] for v in r['f']] for r in data.get('rows', [])]
     result['fields'] = [v['name'] for v in data['schema']['fields']]
     result['total'] = data['totalRows']
     result['pageToken'] = data.get('pageToken', None)
@@ -26,9 +26,10 @@ class BaseApiView(APIView):
     _report = []
     _base_filters = [
                         ("PageToken", "__pageToken", "page token for nex page","BG7AJWVXKAAQAAASAUIIBAEAAUNAICAKCAFCBMFOCU======", ""),
-
                         ("mappre function", "__mapper", "mapper js function", """function(v1, v2){return {"key":key, "value": value} }""", ""),
                         ("reduce function", "__reducer", "reduce js function", """function(key, values){return {"result": result}}""", ""), 
+                        ("start date", "st", "開始時間", """2015-12-01""", " time > timestamp('{}') "), 
+                        ("end date", "ed", "結束時間", """2015-12-30""", " time < timestamp('{}') "), 
                       ]
     _default_filters = []
     _custom_filters = []
@@ -73,7 +74,7 @@ class BaseApiView(APIView):
     def before(self, request):
         self._bigquery = self._report.bigquery()
         for name, key, desc, example, template in self._filters:
-            value = request.data.get(key, False)
+            value = request.query_params.get(key, False)
             if value and not key.startswith('__'):
                 self.bigquery.filter([(key, template.format(value))])
         mapper = request.POST.get('__mapper', '').strip()

@@ -43,6 +43,8 @@ class ReportQuery(object):
             report_filter = filter( lambda f:f.key==key, self.custom_filters)
             if report_filter:
                 self._filters += [(k, report_filter[0].query(value))]
+            else:
+                self._filters += [(key, value)]
         return self
 
     def values(self, cols):
@@ -78,7 +80,6 @@ class ReportQuery(object):
         col_query = ",".join([col.get_query() for col in self._cols]) + "\n "
         # from query
         table_query = ",".join(["{}.{}".format(table.report.dataset, table.table_name) for table in self._tables]) + "\n "
-
         if self._filters:
             filter_query = " and ".join([f[1] for f in self._filters]) + "\n "
         else:
