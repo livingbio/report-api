@@ -140,7 +140,7 @@ class ExportReportApi(BaseApiView):
 
     def __init__(self, *args, **kwargs):
         super(ExportReportApi, self).__init__(*args, **kwargs)
-        self._cols = self.cols or list(self._report.cols.filter(type='dimension'))
+        self._cols = self.cols or list(self._report.cols.exclude(query__contains=r'('))
 
 
 class RawQueryApi(BaseApiView):

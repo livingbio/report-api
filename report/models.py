@@ -21,7 +21,6 @@ class ReportQuery(object):
         select {col_query}
         from {table_query}
         where {filter_query}
-        {group_query}
         {order_query}
         {limit_query}
         ignore case
@@ -168,6 +167,7 @@ class ReportQuery(object):
             job_id = bigquery.create_job(query=querystr, udfs=udfs)
             cache.set(key, False)
 
+        print querystr
         try:
             return bigquery.getJobResults(jobId=job_id, maxResults=pageSize, pageToken=pageToken)
         except Exception as e:
@@ -314,7 +314,12 @@ class Report(models.Model):
 
     @property
     def key_mapping(self):
-        return dict(self.cols.exclude(query__contains=r'(').values_list('key', 'query'))
+        if getattr(self, 'cache', None):
+            return self.cache
+        else:
+            self.cache = dict(self.cols.exclude(query__contains=r'(').values_list('key', 'query'))
+            return self.cache
+        #return dict(self.cols.exclude(query__contains=r'(').values_list('key', 'query'))
 
     def data_transform(self, data):
         from django.utils import dateparse
@@ -323,7 +328,17 @@ class Report(models.Model):
         output = {}
         for key, value in data.items():
             if self.key_mapping.has_key(key):
-                output[self.key_mapping[key]] = value
+                if self.key_mapping[key].startswith('meteric'):
+                    try:
+                        output[self.key_mapping[key]] = value and float(value) or 0
+                    except:
+                        output[self.key_mapping[key]] = 0
+                else:
+                    try:
+                        output[self.key_mapping[key]] = unicode(value)
+                    except:
+                        output[self.key_mapping[key]] = value
+                
 
         ## trans time into bigquery time
         if output.has_key('time'):
@@ -399,6 +414,7 @@ class Table(models.Model):
         return "{}___{}".format(self.report.prefix, self.key)
 
     def upload(self, datas, replace=True):
+        print 'upload start'
         from report import storage, bigquery
         from tempfile import TemporaryFile
         import json
@@ -406,13 +422,19 @@ class Table(models.Model):
             return
 
         tmpfile = TemporaryFile()
+        count = 0
         for line in datas:
+            if count % 100 == 0:
+                print count
+            count += 1
             if isinstance(line, basestring):
                 data = json.loads(line)
             else:
                 data = line
             data = self.report.data_transform(data)
+
             tmpfile.write(json.dumps(data) + "\n")
+        print 'write success'
 
         gs_path = storage.upload(tmpfile, self.filename)
         result = bigquery.write_table(self.table_name, gs_path, async=False)
