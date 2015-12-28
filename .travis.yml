@@ -13,16 +13,3 @@ install:
 
 script:
   - "tox"
-
-# after_success:
-#   - test "$TRAVIS_BRANCH" = "cd" && test "$TRAVIS_PULL_REQUEST" = "false" && deploy=1
-#   - test $deploy && $TRAVIS_BUILD_DIR/deploy.sh
-
-# the deploy hook won't display the error log
-# not good in current stage
-
-deploy:
-  provider: script
-  script: $TRAVIS_BUILD_DIR/deploy.sh
-  on:
-    branch: master
