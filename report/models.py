@@ -14,28 +14,36 @@ class ReportQuery(object):
     _limit = 0
     _filters = []
     _orders = []
+    udfs = []
+    custom_filters = []
+
     query_template = '''
         select {col_query}
         from {table_query}
         where {filter_query}
-        {group_query}
         {order_query}
         {limit_query}
         ignore case
     '''
 
-    def __init__(self, report, query_template=""):
+    def __init__(self, report, custom_filters=[], query_template=""):
         self._report = report
         # initial all table
+        self.custom_filters = custom_filters
         self._tables = list(report.tables.all())
-        if query_template:
+        if query_template.strip():
             self.query_template = query_template
 
     def set_query_template(self, query_template):
         self.query_template = query_template
 
     def filter(self, filters):
-        self._filters += filters
+        for key, value in filters:
+            report_filter = filter( lambda f:f.key==key, self.custom_filters)
+            if report_filter:
+                self._filters += [(k, report_filter[0].query(value))]
+            else:
+                self._filters += [(key, value)]
         return self
 
     def values(self, cols):
@@ -58,10 +66,8 @@ class ReportQuery(object):
         cols = set([col.key for col in self._cols])
         meteric_cols = set([col.key for col in self._cols if col.type == 'meteric'])
         dimension_cols = set([col.key for col in self._cols if col.type == 'dimension'])
-        # filter_cols = set([f[0] for f in self._filters])
         order_cols = set([re.sub("^-", "", col) for col in self._orders])
         orders = set(self._orders)
-        # assert filter_cols.issubset(cols), 'filter error'
         assert cols, 'need col'
         assert orders.issubset(cols), 'orders error'
 
@@ -73,7 +79,6 @@ class ReportQuery(object):
         col_query = ",".join([col.get_query() for col in self._cols]) + "\n "
         # from query
         table_query = ",".join(["{}.{}".format(table.report.dataset, table.table_name) for table in self._tables]) + "\n "
-
         if self._filters:
             filter_query = " and ".join([f[1] for f in self._filters]) + "\n "
         else:
@@ -112,9 +117,16 @@ class ReportQuery(object):
         return query
 
     def execute(self, pageSize=100, pageToken=None):
+        if self.udfs:
+            return self.query_defer(pageSize=pageSize, pageToken=pageToken)
+        else:
+            return self.query(pageSize=pageSize, pageToken=pageToken)
+        
+    def query(self, pageSize=100, pageToken=None):
         from report import bigquery
         from django.core.cache import cache
         import hashlib
+        import json
         md5 = hashlib.md5()
 
         querystr = self.querystr
@@ -133,16 +145,144 @@ class ReportQuery(object):
                 cache.set(key, value)
         return value
 
+    def query_defer(self, pageSize=100, pageToken=None):
+        from report import bigquery
+        from django.core.cache import cache
+        import hashlib
+        import json
+        md5 = hashlib.md5()
 
-class ReportTag(models.Model):
+        querystr = self.querystr
+        udfs = self.udfs
+
+        md5.update(querystr)
+        md5.update(str(pageSize))
+        md5.update(str(pageToken))
+        md5.update(json.dumps(self.udfs))
+        key = md5.hexdigest()
+
+        job_id = cache.get(key, False)
+
+        if not job_id:
+            job_id = bigquery.create_job(query=querystr, udfs=udfs)
+            cache.set(key, False)
+
+        print querystr
+        try:
+            return bigquery.getJobResults(jobId=job_id, maxResults=pageSize, pageToken=pageToken)
+        except Exception as e:
+            cache.set(key, False)
+            raise Exception('job error')
+
+
+REPORT_KEY_TYPES = (
+    ('meteric', 'meteric'),
+    ('dimension', 'dimension')
+)
+
+
+
+class ReportCol(models.Model):
     name = models.CharField(max_length=1024)
+    key = models.CharField(max_length=1024)
+    report = models.ForeignKey("report.Report", related_name="cols", null=True, blank=True)
+
+    type = models.CharField(max_length=100, choices=REPORT_KEY_TYPES)
+    query = models.CharField(max_length=1024)
+
+
+    def get_query(self):
+        return "{} as {}".format(self.query, self.key)
+
+    class Meta:
+        unique_together = ('report', 'key', 'type')
+
+
+
+class Filter(models.Model):
+    name = models.CharField(max_length=1024)
+    key = models.CharField(max_length=1024)
+    col = models.ForeignKey(ReportCol, null=True, blank=True)
+    query_template = models.TextField()
+    description = models.TextField()
+    example = models.TextField()
+
+
+    def query(self, value):
+        return self.query_template.format(value)
+
+
+
+class ReportApi(models.Model):
+    name = models.CharField(max_length=1024)
+    cols = models.ManyToManyField(ReportCol)
+    custom_filters = models.ManyToManyField(Filter, null=True, blank=True)
+    mode = models.CharField(max_length=1024, choices=[('TimeReportApi', 'TimeReportApi'), ('ExportReportApi', 'ExportReportApi')], default='ExportReportApi')
+    live = models.BooleanField(default=True)
+    description = models.TextField()
+    query_template = models.TextField()
+
+    def view_class(self, report):
+        from .views import ReportApiView, TimeReportApi, ExportReportApi
+        api_view = locals()[self.mode]
+        return api_view(
+                    report=report,
+                    cols=list(self.cols.all()),
+                    custom_filter=list(self.custom_filters.all())
+                )
+
+    def view(self, report):
+        return self.view_class(report).as_view()
+
+    def query(self, report):
+        query = report.bigquery(custom_filters=list(self.custom_filters.all()), query_template=self.query_template)
+
+        cols = self.cols.all() or self.report.cols().all()
+        cols = cols.filter(name__regex="^dimension\d+$|^meteric\d+$")
+        query.values(list(cols))
+
+        query.values(list(self.cols.all()))
+        return query
+
+
+
+class ReportGroup(models.Model):
+    name = models.CharField(max_length=1024)
+    description = models.TextField(max_length=1024)
+    live = models.BooleanField(default=True)
+    key = models.CharField(max_length=1024)
 
 
 class Report(models.Model):
     dataset = report_settings.DATASET
     name = models.CharField(max_length=1024)
     prefix = models.CharField(max_length=255, unique=True, validators=[RegexValidator(regex=".*___.*", inverse_match=True), RegexValidator(regex="[a-zA-Z-0-9]+")])
-    tags = models.ManyToManyField(ReportTag, null=True, blank=True)
+    group = models.ForeignKey(ReportGroup, null=True, blank=True)
+    apis = models.ManyToManyField(ReportApi, null=True, blank=True)
+    live = models.BooleanField(default=True)
+    description = models.TextField(null=True, blank=True)
+
+    def register_api(self, name, api_info):
+        cols = api_info.report.cols.filter(key__in=api_info._cols)
+        filters = []
+        api = ReportApi.objects.get_or_create(
+                    name=name,
+                    mode=api_info.__class__.__name__
+                )[0]
+
+        for name, key, description, example, query_template in api_info._custom_filters:
+            f = Filter.objects.get_or_create(
+                        name= name,
+                        key= key,
+                        description= description,
+                        example= example,
+                        query_template= query_template,
+                    )
+            api.custom_filters.add(f[0])
+
+        api.save()
+        self.apis.add(api)
+
 
     def __repr__(self):
         return self.name.encode('utf-8')
@@ -150,12 +290,12 @@ class Report(models.Model):
     def __str__(self):
         return self.name.encode('utf-8')
 
-    def bigquery(self):
-        return ReportQuery(self)
+    def bigquery(self, custom_filters=[], query_template=""):
+        return ReportQuery(self, custom_filters=custom_filters, query_template=query_template)
 
-    def create_table(self, key, input_file, replace=False):
+    def create_table(self, key, datas, replace=False):
         table_info = Table.objects.get_or_create(report=self, key=key)
-        table_info[0].upload(input_file, replace=replace)
+        table_info[0].upload(datas, replace=replace)
 
     def has_table(self, table):
         from report import bigquery
@@ -174,7 +314,12 @@ class Report(models.Model):
 
     @property
     def key_mapping(self):
-        return dict(self.cols.exclude(query__contains=r'(').values_list('key', 'query'))
+        if getattr(self, 'cache', None):
+            return self.cache
+        else:
+            self.cache = dict(self.cols.exclude(query__contains=r'(').values_list('key', 'query'))
+            return self.cache
+        #return dict(self.cols.exclude(query__contains=r'(').values_list('key', 'query'))
 
     def data_transform(self, data):
         from django.utils import dateparse
@@ -183,7 +328,19 @@ class Report(models.Model):
         output = {}
         for key, value in data.items():
             if self.key_mapping.has_key(key):
-                output[self.key_mapping[key]] = value
+                if self.key_mapping[key].startswith('meteric'):
+                    try:
+                        output[self.key_mapping[key]] = value and float(value) or 0
+                    except:
+                        output[self.key_mapping[key]] = 0
+                elif self.key_mapping[key].startswith('dimension'):
+                    try:
+                        output[self.key_mapping[key]] = unicode(value)
+                    except:
+                        output[self.key_mapping[key]] = str(value)
+                else:
+                    output[self.key_mapping[key]] = value
+                
 
         ## trans time into bigquery time
         if output.has_key('time'):
@@ -192,6 +349,52 @@ class Report(models.Model):
             output['time'] = bigquery_utils.to_utctimestamp(output['time'])
 
         return output
+
+    @classmethod
+    def quick_create(cls, report_name, datas):
+        if isinstance(datas, list):
+            datas = iter(datas)
+        import itertools
+        report = Report.objects.create(
+                    name=report_name,
+                    prefix=report_name,
+                )
+
+        data = next(datas, {})
+        ## create cols
+        dimension_idx = 1
+        meteric_idx = 1
+        for key in data.keys():
+            if key in ['lat', 'lng', 'time', 'type']:
+                continue
+            try:
+                float(data[key])
+                ReportMeteric.objects.get_or_create(
+                    type='meteric',
+                    report=report,
+                    key="meteric{}".format(meteric_idx)
+                )
+                meteric_idx+=1
+            except:
+                ReportDimension.objects.get_or_create(
+                    type='dimension',
+                    report=report,
+                    key="dimension{}".format(meteric_idx)
+                )
+                meteric_idx+=1
+
+        report.create_table("main", itertools.chain([data], datas))
+        return report
+
+        
+
+
+
+class ReportTag(models.Model):
+    name = models.CharField(max_length=1024)
+    description = models.TextField(max_length=1024)
+    apis = models.ManyToManyField(Report)
+
 
 
 class Table(models.Model):
@@ -212,7 +415,8 @@ class Table(models.Model):
     def table_name(self):
         return "{}___{}".format(self.report.prefix, self.key)
 
-    def upload(self, input_file, replace=True):
+    def upload(self, datas, replace=True):
+        print 'upload start'
         from report import storage, bigquery
         from tempfile import TemporaryFile
         import json
@@ -220,39 +424,24 @@ class Table(models.Model):
             return
 
         tmpfile = TemporaryFile()
-        for line in input_file:
-            data = json.loads(line)
+        count = 0
+        for line in datas:
+            if count % 100 == 0:
+                print count
+            count += 1
+            if isinstance(line, basestring):
+                data = json.loads(line)
+            else:
+                data = line
             data = self.report.data_transform(data)
+
             tmpfile.write(json.dumps(data) + "\n")
+        print 'write success'
 
         gs_path = storage.upload(tmpfile, self.filename)
         result = bigquery.write_table(self.table_name, gs_path, async=False)
         return result
 
-
-REPORT_KEY_TYPES = (
-    ('meteric', 'meteric'),
-    ('dimension', 'dimension')
-)
-
-
-class ReportCol(models.Model):
-    name = models.CharField(max_length=1024)
-    key = models.CharField(max_length=1024)
-    report = models.ForeignKey(Report, related_name="cols")
-
-    type = models.CharField(max_length=100, choices=REPORT_KEY_TYPES)
-    query = models.CharField(max_length=1024)
-
-    def filter(self, operation, value):
-        query = self.operation_mapping[operation].format(value)
-        return (self.key, query)
-
-    def get_query(self):
-        return "{} as {}".format(self.query, self.key)
-
-    class Meta:
-        unique_together = ('report', 'key', 'type')
 
 
 class MetericManager(models.Manager):

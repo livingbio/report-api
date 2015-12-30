@@ -11,7 +11,6 @@ import uuid
 from report.gapis import core
 from apiclient.discovery import build
 from apiclient.http import MediaIoBaseUpload
-import schema
 import magic
 import json
 from apiclient.errors import HttpError

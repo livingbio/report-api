@@ -56,13 +56,16 @@ def register_app(app_name=None):
 
         register_api(app.settings)
 
+        apis = __import__('%s.urls' % app_name)
+
 
 def register_api(api_settings):
-    from report.models import Report, ReportMeteric, ReportDimension
-
+    from report.models import Report, ReportMeteric, ReportDimension, ReportGroup
+    group = ReportGroup.objects.get_or_create(name=api_settings.GROUP)[0]
     report, _ = Report.objects.get_or_create(
         name=api_settings.REPORT_NAME,
         prefix=api_settings.TABLE_PREFIX,
+        group=group,
     )
 
     # table, _ = Table.objects.get_or_create(

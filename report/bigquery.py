@@ -29,9 +29,8 @@ def write_table(table_name, gs_file, async=True, overwrite=True):
 
 def get_tables(dataset):
     service = get_service()
-    tableInfo = service.get_tables(dataset=dataset)
-    tables = [t['tableReference']['tableId'] for t in tableInfo]
-    return tables
+    for table in service.get_tables(dataset=dataset):
+        yield table['tableReference']['tableId']
 
 
 def has_table(dataset, table_name):
@@ -41,6 +40,23 @@ def has_table(dataset, table_name):
 def query(*args, **kwargs):
     service = get_service()
     return service.query(*args, **kwargs)
+
+def create_job(query, udfs=[]):
+    service = get_service()
+    body = {}
+    body['configuration'] = {}
+    body['configuration']['query'] = {}
+    body['configuration']['query']['query'] = query
+    body['configuration']['query']['userDefinedFunctionResources'] = [{"inlineCode": code} for code in udfs]
+    return service.jobs().insert(projectId=settings.PROJECT_ID, body=body).execute()['jobReference']['jobId']
+
+
+def getJobResults(jobId, maxResults=None, pageToken=None):
+    service = get_service()
+    try:
+        return service.jobs().getQueryResults(projectId=settings.PROJECT_ID, jobId=jobId, maxResults=maxResults, pageToken=pageToken).execute()
+    except Exception as e:
+        print e.message
 
 def get_service():
     from report.gapis import bigquery

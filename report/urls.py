@@ -5,23 +5,15 @@
 #
 # Distributed under terms of the MIT license.
 
-from report.routers import ReportRouter
+from .views import ReportRootView, ReportGroupView, ReportReportView, ReportApiView
+from django.conf.urls import include, url
+from django.contrib import admin
 
-# type routers
-iot_router = ReportRouter()
+admin.autodiscover()
 
-
-# default router
-router = ReportRouter()
-router.register('iot', iot_router)
-
-
-from django.conf import settings
-for report_api in settings.REPORT_APIS:
-    try:
-        __import__('{}.urls'.format(report_api))
-    except Exception as e:
-        pass
-
-
-urlpatterns = router.urls
+urlpatterns = [
+    url(r'(?P<group>\w+)/(?P<report>\w+)/(?P<api>\w+)/?$', ReportApiView.as_view(), name='api'),
+    url(r'(?P<group>\w+)/(?P<report>\w+)/?$', ReportReportView.as_view(), name='report'),
+    url(r'(?P<group>\w+)/?$', ReportGroupView.as_view(), name='group'),
+    url(r'/?$', ReportRootView.as_view(), name='groups'),
+]

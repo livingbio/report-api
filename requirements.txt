@@ -3,3 +3,4 @@ djangorestframework==3.2.4
 Django>=1.8
 google-api-python-client
 python-magic
+pyschema
