@@ -333,11 +333,13 @@ class Report(models.Model):
                         output[self.key_mapping[key]] = value and float(value) or 0
                     except:
                         output[self.key_mapping[key]] = 0
-                else:
+                elif self.key_mapping[key].startswith('dimension'):
                     try:
                         output[self.key_mapping[key]] = unicode(value)
                     except:
-                        output[self.key_mapping[key]] = value
+                        output[self.key_mapping[key]] = str(value)
+                else:
+                    output[self.key_mapping[key]] = value
                 
 
         ## trans time into bigquery time
