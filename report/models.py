@@ -7,26 +7,28 @@ from django.core.validators import RegexValidator
 
 class ReportQuery(object):
     # query report
-    _report = None
-    _cols = []
-    _tables = None
-    _groups = []
-    _limit = 0
-    _filters = []
-    _orders = []
-    udfs = []
-    custom_filters = []
 
     query_template = '''
         select {col_query}
         from {table_query}
         where {filter_query}
         {order_query}
+        {group_query}
         {limit_query}
         ignore case
     '''
 
     def __init__(self, report, custom_filters=[], query_template=""):
+
+        self._report = None
+        self._cols = []
+        self._tables = None
+        self._groups = []
+        self._limit = 0
+        self._filters = []
+        self._orders = []
+        self.udfs = []
+        self.custom_filters = []
         self._report = report
         # initial all table
         self.custom_filters = custom_filters
@@ -72,8 +74,26 @@ class ReportQuery(object):
         assert orders.issubset(cols), 'orders error'
 
         groups = []
-        if meteric_cols and dimension_cols:
-            groups = dimension_cols
+        aggfunctions = [
+                    "AVG","BIT_AND","BIT_OR",
+                    "BIT_XOR","CORR","COUNT",
+                    "COVAR_POP","COVAR_SAMP","EXACT_COUNT_DISTINCT",
+                    "FIRST","GROUP_CONCAT","GROUP_CONCAT_UNQUOTED",
+                    "LAST","MAX","MIN","NEST","NTH",
+                    "QUANTILES","STDDEV","STDDEV_POP","STDDEV_SAMP",
+                    "SUM","TOP","UNIQUE","VARIANCE","VAR_POP","VAR_SAMP",
+                ]
+        aggfunction_pattern = "({})\s*\(".format("|".join(aggfunctions))
+
+        has_agg = False
+        groups = []
+        for col in self._cols:
+            if re.search(aggfunction_pattern, col.query, re.I):
+                has_agg = True
+            else:
+                groups.append(col.key)
+        if not has_agg:
+            groups = []
 
         # select query
         col_query = ",".join([col.get_query() for col in self._cols]) + "\n "
@@ -130,6 +150,7 @@ class ReportQuery(object):
         md5 = hashlib.md5()
 
         querystr = self.querystr
+        print querystr
 
         md5.update(querystr)
         md5.update(str(pageSize))
@@ -279,7 +300,7 @@ class Report(models.Model):
                         query_template= query_template,
                     )
             api.custom_filters.add(f[0])
-
+        api.cols = cols
         api.save()
         self.apis.add(api)
 
@@ -324,6 +345,8 @@ class Report(models.Model):
     def data_transform(self, data):
         from django.utils import dateparse
         from report.gapis.bigquery import utils as bigquery_utils
+        from datetime import datetime
+
 
         output = {}
         for key, value in data.items():
@@ -345,7 +368,8 @@ class Report(models.Model):
         ## trans time into bigquery time
         if output.has_key('time'):
             if isinstance(output['time'], basestring):
-                output['time'] = dateparse.parse_datetime(output['time'])
+                t = output['time']
+                output['time'] = dateparse.parse_datetime(output['time']) or datetime.strptime(t, '%Y-%m-%d')
             output['time'] = bigquery_utils.to_utctimestamp(output['time'])
 
         return output

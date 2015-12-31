@@ -73,6 +73,7 @@ class BaseApiView(APIView):
 
     def before(self, request):
         self._bigquery = self._report.bigquery()
+        print id(self._bigquery)
         for name, key, desc, example, template in self._filters:
             value = request.query_params.get(key, False)
             if value and not key.startswith('__'):
@@ -127,7 +128,7 @@ class BaseApiView(APIView):
 
     def get(self, request, *args, **kwargs):
         self.before(request)
-        pageToken = request.data.get('__pageToken', None)
+        pageToken = request.GET.get('__pageToken', None)
         result = self.bigquery.execute(pageToken=pageToken)
         result = self.after(request, result)
         return Response(result)
@@ -163,7 +164,7 @@ class TimeReportApi(BaseApiView):
         self.default_interval = default_interval
 
     def before(self, request):
-        time_iterval = request.data.get("__time", self.default_interval)
+        time_iterval = request.GET.get("__time", self.default_interval)
         dimension = self._report.cols.get(key=time_iterval)
         super(TimeReportApi, self).before(request)
         self.bigquery.values(self._cols + [dimension])
@@ -217,8 +218,8 @@ class ReportReportView(APIView):
         import csv
         group = kwargs.get('group')
         report = kwargs.get('report')
-        datas = csv.DictReader(request.data.get("datas"))
-        request.data.get('report')
+        datas = csv.DictReader(request.GET.get("datas"))
+        request.GET.get('report')
         report = report_models.Report.quick_create(report, datas)
         report.group = report_models.ReportGroup.objects.get(name=group)
         report.save()
