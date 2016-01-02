@@ -3,6 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.exceptions import Throttled
 from django.core.urlresolvers import reverse
+from django.utils.encoding import smart_unicode
 import json
 
 
@@ -28,8 +29,6 @@ class BaseApiView(APIView):
                         ("PageToken", "__pageToken", "page token for nex page","BG7AJWVXKAAQAAASAUIIBAEAAUNAICAKCAFCBMFOCU======", ""),
                         ("mappre function", "__mapper", "mapper js function", """function(v1, v2){return {"key":key, "value": value} }""", ""),
                         ("reduce function", "__reducer", "reduce js function", """function(key, values){return {"result": result}}""", ""), 
-                        ("start date", "st", "開始時間", """2015-12-01""", " time > timestamp('{}') "), 
-                        ("end date", "ed", "結束時間", """2015-12-30""", " time < timestamp('{}') "), 
                       ]
     _default_filters = []
     _custom_filters = []
@@ -209,7 +208,7 @@ class ReportReportView(APIView):
             api_info['name'] = api.name
             api_info['description'] = api.description
             view = api.view_class(report)
-            api_info['filters'] = [{"name": f[0].decode('utf-8'), "key":f[1], "description": f[2].decode('utf-8'), "example": f[3].decode('utf-8')} for f in view._filters]
+            api_info['filters'] = [{"name": smart_unicode(f[0]), "key":f[1], "description": smart_unicode(f[2]), "example": smart_unicode(f[3])} for f in view._filters]
             api_info['url'] = reverse('report:api', kwargs={"group": group, "report": report.prefix, "api": api.name})
             result.append(api_info)
         return Response(result)

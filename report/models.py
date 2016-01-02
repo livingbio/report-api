@@ -249,7 +249,7 @@ class ReportApi(models.Model):
         return api_view(
                     report=report,
                     cols=list(self.cols.all()),
-                    custom_filter=list(self.custom_filters.all())
+                    custom_filters=list(self.custom_filters.all().values_list('name', 'key', 'description', 'example', 'query_template'))
                 )
 
     def view(self, report):
@@ -290,7 +290,7 @@ class Report(models.Model):
                     name=name,
                     mode=api_info.__class__.__name__
                 )[0]
-
+        api.custom_filters = []
         for name, key, description, example, query_template in api_info._custom_filters:
             f = Filter.objects.get_or_create(
                         name= name,
