@@ -217,7 +217,7 @@ class ReportReportView(APIView):
         import csv
         group = kwargs.get('group')
         report = kwargs.get('report')
-        datas = csv.DictReader(request.GET.get("datas"))
+        datas = csv.DictReader(request.FILES.get("datas"))
         request.GET.get('report')
         report = report_models.Report.quick_create(report, datas)
         report.group = report_models.ReportGroup.objects.get(name=group)
