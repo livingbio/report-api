@@ -134,7 +134,7 @@ class ReportRegistedTests(TestCase):
         self.mock_get_job_result.assert_called_once_with(jobId='create_job_genreator', maxResults=100, pageToken=None)
 
     def test_quick_upload_table(self):
-        resp = self.client.get(reverse('report:upload_report'))
+        resp = self.client.get(reverse('report:quick_upload'))
 
         with open("tests/test_report.csv") as fp:
             url = reverse('report:quick_upload')
