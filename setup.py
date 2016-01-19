@@ -15,7 +15,7 @@ REQUIREMENTS = []
 
 setup(
     name='report-api',
-    version='0.1',
+    version='0.2',
     description='Tagtoo ec parser',
     author='lucemia',
     author_email='lucemia@gmail.com',

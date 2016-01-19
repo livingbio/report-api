@@ -396,14 +396,18 @@ class Report(models.Model):
                 ReportMeteric.objects.get_or_create(
                     type='meteric',
                     report=report,
-                    key="meteric{}".format(meteric_idx)
+                    name=key,
+                    key=key,
+                    query="meteric{}".format(meteric_idx)
                 )
                 meteric_idx+=1
             except:
                 ReportDimension.objects.get_or_create(
                     type='dimension',
                     report=report,
-                    key="dimension{}".format(meteric_idx)
+                    name=key,
+                    key=key,
+                    query="dimension{}".format(meteric_idx)
                 )
                 meteric_idx+=1
 
@@ -424,8 +428,11 @@ class ReportTag(models.Model):
 class Table(models.Model):
     report = models.ForeignKey(Report, related_name="tables")
     # table name in bigquery
-    key = models.CharField(max_length=1024, unique=True, validators=[RegexValidator("[a-zA-Z-0-9]*")])
+    key = models.CharField(max_length=1024, validators=[RegexValidator("[a-zA-Z-0-9]*")])
     #day = models.DateField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ('report', 'key',)
 
     @property
     def name(self):

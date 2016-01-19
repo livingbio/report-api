@@ -142,6 +142,7 @@ class ExportReportApi(BaseApiView):
 
     def __init__(self, *args, **kwargs):
         super(ExportReportApi, self).__init__(*args, **kwargs)
+        import pdb;pdb.set_trace()
         self._cols = self.cols or list(self._report.cols.exclude(query__contains=r'('))
 
 
@@ -268,12 +269,26 @@ class Upload_ReportView(View):
         try:
             report = report_models.Report.quick_create(report, datas)
         except Exception as e:
+            print e
             report = report_models.Report.objects.get(name=report)
             if report:
                 report.delete()
-            return HttpResponse('server execute error', status_code=417)
+            return HttpResponse('server execute error', status=417)
+        else:
+            report.group = report_models.ReportGroup.objects.get(id=group)
+            report.description = description
+            report.save()
 
-        report.group = report_models.ReportGroup.objects.get(name=group)
-        report.description = description
-        report.save()
-        return HttpResponse("success")
+            from report.views import ExportReportApi
+            report.register_api(
+                'export',
+                ExportReportApi(
+                    report=report,
+                    custom_filters=[
+                        ("start_day", "st", "起始時間", "2015-09-01", "time > timestamp('{}')"),
+                        ("end_day", "ed", "結束時間", "2015-10-01", "time < timestamp('{}')"),
+                    ],
+                )
+            )
+
+            return HttpResponse("success")
