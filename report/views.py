@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from django.http import HttpResponse
+from django.views.generic import View
 from rest_framework.exceptions import Throttled
 from django.core.urlresolvers import reverse
 from django.utils.encoding import smart_unicode
@@ -240,4 +242,31 @@ class ReportApiView(APIView):
         return view(*args, **kwargs)
 
 
+from forms import ReportForm
 
+class Upload_ReportView(View):
+    def get(self, request, *args, **kwargs):
+        form = ReportForm()
+        template = '''
+            <form method="post" enctype="multipart/form-data">
+            {}
+            <input type="submit" value="Submit">
+            </form>
+
+        '''.format(form.as_p())
+        return HttpResponse(template)
+            
+
+    def post(self, request, *args, **kwargs):
+        form = ReportForm(request.POST, request.FILES)
+        import csv
+        group = form.data.get('group')
+        report = form.data.get('name')
+        description = form.data.get('description')
+        datas = csv.DictReader(form.files.get("file"))
+        request.GET.get('report')
+        report = report_models.Report.quick_create(report, datas)
+        report.group = report_models.ReportGroup.objects.get(name=group)
+        report.description = description
+        report.save()
+        return HttpResponse("success")

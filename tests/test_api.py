@@ -134,9 +134,11 @@ class ReportRegistedTests(TestCase):
         self.mock_get_job_result.assert_called_once_with(jobId='create_job_genreator', maxResults=100, pageToken=None)
 
     def test_quick_upload_table(self):
+        resp = self.client.get(reverse('report:upload_report'))
+
         with open("tests/test_report.csv") as fp:
-            url = reverse('report:report', kwargs={"group": "iot", "report": "test_report"})
-            resp = self.client.post(url, {"datas": fp})
+            url = reverse('report:upload_report')
+            resp = self.client.post(url, {"name": "test_report", "group": "iot", "file": fp})
         report = Report.objects.get(prefix="test_report")
         self.assertTrue(bool(report))
         self.assertEqual(self.mock_write_table.call_count, 1)
