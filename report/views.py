@@ -142,7 +142,6 @@ class ExportReportApi(BaseApiView):
 
     def __init__(self, *args, **kwargs):
         super(ExportReportApi, self).__init__(*args, **kwargs)
-        import pdb;pdb.set_trace()
         self._cols = self.cols or list(self._report.cols.exclude(query__contains=r'('))
 
 
@@ -186,6 +185,8 @@ class ReportRootView(APIView):
         result = groups.values('name', 'description')
         for data in result:
             data['url'] = reverse('report:group', kwargs={"group": data["name"]})
+        result = list(result)
+        result += [ {"url": reverse('report:quick_upload'), "name": "quick_upload", "description": u"快速 csv 檔案上傳"} ]
         return Response(result)
 
 class ReportGroupView(APIView):

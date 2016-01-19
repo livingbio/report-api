@@ -137,7 +137,7 @@ class ReportRegistedTests(TestCase):
         resp = self.client.get(reverse('report:upload_report'))
 
         with open("tests/test_report.csv") as fp:
-            url = reverse('report:upload_report')
+            url = reverse('report:quick_upload')
             resp = self.client.post(url, {"name": "test_report", "group": "iot", "file": fp})
         report = Report.objects.get(prefix="test_report")
         self.assertTrue(bool(report))

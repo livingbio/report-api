@@ -14,7 +14,7 @@ from django.views.decorators.csrf import csrf_exempt
 admin.autodiscover()
 
 urlpatterns = [
-    url(r'upload_report/?$', csrf_exempt(Upload_ReportView.as_view()), name='upload_report'),
+    url(r'upload_report/?$', csrf_exempt(Upload_ReportView.as_view()), name='quick_upload'),
     url(r'(?P<group>\w+)/(?P<report>\w+)/(?P<api>\w+)/?$', ReportApiView.as_view(), name='api'),
     url(r'(?P<group>\w+)/(?P<report>\w+)/?$', ReportReportView.as_view(), name='report'),
     url(r'(?P<group>\w+)/?$', ReportGroupView.as_view(), name='group'),
