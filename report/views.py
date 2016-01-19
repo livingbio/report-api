@@ -265,7 +265,14 @@ class Upload_ReportView(View):
         description = form.data.get('description')
         datas = csv.DictReader(form.files.get("file"))
         request.GET.get('report')
-        report = report_models.Report.quick_create(report, datas)
+        try:
+            report = report_models.Report.quick_create(report, datas)
+        except Exception as e::
+            report = report_models.Report.objects.get(name=report)
+            if report:
+                report.delete()
+            return HttpResponse('server execute error', status_code=417)
+
         report.group = report_models.ReportGroup.objects.get(name=group)
         report.description = description
         report.save()
