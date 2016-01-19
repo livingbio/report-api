@@ -267,7 +267,7 @@ class Upload_ReportView(View):
         request.GET.get('report')
         try:
             report = report_models.Report.quick_create(report, datas)
-        except Exception as e::
+        except Exception as e:
             report = report_models.Report.objects.get(name=report)
             if report:
                 report.delete()
