@@ -213,7 +213,13 @@ class ReportCol(models.Model):
 
 
     def get_query(self):
-        return "{} as {}".format(self.query, self.key)
+        return u"{} as {}".format(self.query, self.key)
+
+
+    def __str__(self):
+        return u"{}.{}".format(self.report.name, self.key).encode('utf-8')
+
+
 
     class Meta:
         unique_together = ('report', 'key', 'type')
@@ -273,6 +279,11 @@ class ReportGroup(models.Model):
     live = models.BooleanField(default=True)
     key = models.CharField(max_length=1024)
 
+    def __str__(self):
+        return self.name.encode('utf-8')
+
+
+
 
 class Report(models.Model):
     dataset = report_settings.DATASET
@@ -282,6 +293,10 @@ class Report(models.Model):
     apis = models.ManyToManyField(ReportApi, null=True, blank=True)
     live = models.BooleanField(default=True)
     description = models.TextField(null=True, blank=True)
+
+    def __str__(self):
+        return self.name.encode('utf-8')
+
 
     def register_api(self, name, api_info):
         cols = api_info.report.cols.filter(key__in=api_info._cols)
@@ -304,12 +319,6 @@ class Report(models.Model):
         api.save()
         self.apis.add(api)
 
-
-    def __repr__(self):
-        return self.name.encode('utf-8')
-
-    def __str__(self):
-        return self.name.encode('utf-8')
 
     def bigquery(self, custom_filters=[], query_template=""):
         return ReportQuery(self, custom_filters=custom_filters, query_template=query_template)
@@ -423,6 +432,9 @@ class ReportTag(models.Model):
     description = models.TextField(max_length=1024)
     apis = models.ManyToManyField(Report)
 
+    def __str__(self):
+        return self.name.encode('utf-8')
+
 
 
 class Table(models.Model):
@@ -430,6 +442,10 @@ class Table(models.Model):
     # table name in bigquery
     key = models.CharField(max_length=1024, validators=[RegexValidator("[a-zA-Z-0-9]*")])
     #day = models.DateField(null=True, blank=True)
+
+
+    def __str__(self):
+        return self.name.encode('utf-8')
 
     class Meta:
         unique_together = ('report', 'key',)

@@ -31,7 +31,7 @@ class ReportColAdmin(admin.ModelAdmin):
     list_filter = ['report']
 
 class TableAdmin(admin.ModelAdmin):
-    list_display = [ 'id', 'report', 'key']
+    list_display = [ 'id', 'report', 'name']
 
 #admin.site.register(models.ReportTag)
 admin.site.register(models.Report, ReportAdmin)
