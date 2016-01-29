@@ -1,6 +1,29 @@
-PyOpenSSL
+# Python wrapper module around the OpenSSL library
+# https://pypi.python.org/pypi/pyOpenSSL/0.15.1
+pyOpenSSL==0.15.1
+
+
+# Web APIs for Django, made easy.
+# https://pypi.python.org/pypi/djangorestframework/3.2.4
 djangorestframework==3.2.4
+
+
+# A high-level Python Web framework that encourages rapid development and clean, pragmatic design.
+# https://pypi.python.org/pypi/Django/1.8
 Django>=1.8
-google-api-python-client
-python-magic
-pyschema
+
+
+# Google API Client Library for Python
+# https://pypi.python.org/pypi/google-api-python-client/1.4.2
+google-api-python-client==1.4.2
+
+
+# File type identification using libmagic
+# https://pypi.python.org/pypi/python-magic/0.4.10
+python-magic==0.4.10
+
+
+# Schema definition and serialisation library
+# https://pypi.python.org/pypi/pyschema/2.4.0
+pyschema==2.4.0
+
