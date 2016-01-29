@@ -239,7 +239,7 @@ class ReportApiView(APIView):
         report = kwargs.get('report')
         api = kwargs.get('api')
         report = report_models.Report.objects.get(prefix=report)
-        api = report_models.ReportApi.objects.get(name=api)
+        api = report.apis.get(name=api)
         view = api.view(report)
         return view(*args, **kwargs)
 
