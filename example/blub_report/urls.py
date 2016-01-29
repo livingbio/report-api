@@ -19,6 +19,17 @@ blub_report.register_api(
 )
 
 blub_report.register_api(
+    'export',
+    ExportReportApi(
+        report=blub_report,
+        custom_filters=[
+            ("start_day", "st", "起始時間", "2015-09-01", "time > timestamp('{}')"),
+            ("end_day", "ed", "結束時間", "2015-10-01", "time < timestamp('{}')"),
+        ],
+    )
+)
+
+blub_report.register_api(
     'avg_power_frequency_by_time',
     TimeReportApi(
         report=blub_report,
