@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from django.test import TestCase
 from faker import Faker
 from mock import patch
-from report.models import Report, ReportCol, Table, ReportApi
+from report.models import Report, ReportCol, Table, ReportApi, ReportGroup
 import re
 from django.test import Client
 from django.core.urlresolvers import reverse
@@ -63,7 +63,7 @@ class ReportRegistedTests(TestCase):
     def test_api(self):
         resp = self.client.get(reverse('report:groups'))
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual([{u'description': u'', u'name': u'iot', u'url': u'/report/iot'}], json.loads(resp.content))
+        self.assertEqual([{u'description': u'', u'name': u'iot', u'url': u'/report/iot'}, {u'description': u'\u5feb\u901f csv \u6a94\u6848\u4e0a\u50b3', u'name': u'quick_upload', u'url': u'/report/quick_upload'}], json.loads(resp.content))
 
         resp = self.client.get(reverse('report:group', kwargs={"group":"iot"}))
         self.assertEqual(resp.status_code, 200)
@@ -137,8 +137,9 @@ class ReportRegistedTests(TestCase):
         resp = self.client.get(reverse('report:quick_upload'))
 
         with open("tests/test_report.csv") as fp:
+            group = ReportGroup.objects.get(name="iot").id
             url = reverse('report:quick_upload')
-            resp = self.client.post(url, {"name": "test_report", "group": "iot", "file": fp})
+            resp = self.client.post(url, {"name": "test_report", "group": group, "file": fp})
         report = Report.objects.get(prefix="test_report")
         self.assertTrue(bool(report))
         self.assertEqual(self.mock_write_table.call_count, 1)
