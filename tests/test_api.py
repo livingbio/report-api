@@ -57,6 +57,7 @@ class ReportRegistedTests(TestCase):
 
         from report.utils import register_app
         register_app("blub_report")
+        register_app("blub_report2")
 
         self.report = Report.objects.get(prefix=settings.TABLE_PREFIX)
 
@@ -67,7 +68,7 @@ class ReportRegistedTests(TestCase):
 
         resp = self.client.get(reverse('report:group', kwargs={"group":"iot"}))
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual([{u'description': None, u'name': u'\u667a\u6167\u71c8\u6ce1', u'prefix': u'blub', u'url': u'/report/iot/blub'} ], json.loads(resp.content))
+        self.assertEqual([{u'description': None, u'name': u'\u667a\u6167\u71c8\u6ce1', u'prefix': u'blub', u'url': u'/report/iot/blub'}, {u'description': None, u'name': u'\u667a\u6167\u71c8\u6ce1', u'prefix': u'blub2', u'url': u'/report/iot/blub2'} ], json.loads(resp.content))
 
         resp = self.client.get(reverse('report:report', kwargs={"group":"iot", "report": "blub"}))
         self.assertEqual(resp.status_code, 200)

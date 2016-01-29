@@ -81,6 +81,7 @@ class ReportQueryTest(TestCase):
         self.mock_write_table = self.bigquery_write_table_patcher.start()
 
         register_app("blub_report")
+        register_app("blub_report2")
 
         self.report = Report.objects.get(prefix=settings.TABLE_PREFIX)
 
