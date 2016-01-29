@@ -241,6 +241,7 @@ class Filter(models.Model):
 
 
 class ReportApi(models.Model):
+    report = models.ForeignKey('Report', related_name="apis")
     name = models.CharField(max_length=1024)
     cols = models.ManyToManyField(ReportCol)
     custom_filters = models.ManyToManyField(Filter, null=True, blank=True)
@@ -248,6 +249,9 @@ class ReportApi(models.Model):
     live = models.BooleanField(default=True)
     description = models.TextField()
     query_template = models.TextField()
+
+    class Meta():
+        unique_together = ('report', 'name')
 
     def view_class(self, report):
         from .views import ReportApiView, TimeReportApi, ExportReportApi
@@ -290,20 +294,23 @@ class Report(models.Model):
     name = models.CharField(max_length=1024)
     prefix = models.CharField(max_length=255, unique=True, validators=[RegexValidator(regex=".*___.*", inverse_match=True), RegexValidator(regex="[a-zA-Z-0-9]+")])
     group = models.ForeignKey(ReportGroup, null=True, blank=True)
-    apis = models.ManyToManyField(ReportApi, null=True, blank=True)
+    #apis = models.ManyToManyField(ReportApi, null=True, blank=True)
     live = models.BooleanField(default=True)
     description = models.TextField(null=True, blank=True)
 
     def __str__(self):
         return self.name.encode('utf-8')
 
+    def __unicode__(self):
+        return self.name.decode('utf-8')
 
     def register_api(self, name, api_info):
         cols = api_info.report.cols.filter(key__in=api_info._cols)
         filters = []
         api = ReportApi.objects.get_or_create(
                     name=name,
-                    mode=api_info.__class__.__name__
+                    mode=api_info.__class__.__name__,
+                    report=self
                 )[0]
         api.custom_filters = []
         for name, key, description, example, query_template in api_info._custom_filters:
@@ -317,7 +324,6 @@ class Report(models.Model):
             api.custom_filters.add(f[0])
         api.cols = cols
         api.save()
-        self.apis.add(api)
 
 
     def bigquery(self, custom_filters=[], query_template=""):

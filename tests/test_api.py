@@ -80,6 +80,7 @@ class ReportRegistedTests(TestCase):
 #    def test_export_api(self):
 #        api = ReportApi.objects.create(
 #                    name="test",
+#                    report=self.report
 #                )
 #        api.save()
 #        self.report.apis.add(api)
@@ -92,10 +93,10 @@ class ReportRegistedTests(TestCase):
     def test_export_api_2(self):
         api = ReportApi.objects.create(
                     name="test",
+                    report=self.report,
                 )
         api.cols = self.report.cols.filter(key__in=['time', 'year', 'weekday', 'month', 'date'])[:5]
         api.save()
-        self.report.apis.add(api)
 
         resp = self.client.get(reverse('report:api', kwargs={"group":"iot", "report": "blub", "api": "test"}))
         self.mock_bigquery_query.assert_called_once_with(pageSize=100, pageToken=None, query="\n        select time as time,STRFTIME_UTC_USEC(time, '%Y-%m-%d') as date,STRFTIME_UTC_USEC(time, '%Y-%m') as month,STRFTIME_UTC_USEC(time, '%Y') as year,DAYOFWEEK(time) as weekday\n \n        from iot.blub___20151001,iot.blub___20151002,iot.blub___20151003,iot.blub___20151004,iot.blub___20151005,iot.blub___20151006,iot.blub___20151007,iot.blub___20151008,iot.blub___20151009,iot.blub___20151010\n \n        where  True \n        \n        \n        \n        ignore case\n    ")
@@ -106,10 +107,10 @@ class ReportRegistedTests(TestCase):
         api = ReportApi.objects.create(
                     name="test",
                     mode="TimeReportApi",
+                    report=self.report
                 )
         api.cols = cols
         api.save()
-        self.report.apis.add(api)
 
         resp = self.client.get(reverse('report:api', kwargs={"group":"iot", "report": "blub", "api": "test"}) + "?test=1")
         self.mock_bigquery_query.assert_called_once_with(pageSize=100, pageToken=None, query="\n        select count(time) as total,STRFTIME_UTC_USEC(time, '%Y-%m-%d') as date\n \n        from iot.blub___20151001,iot.blub___20151002,iot.blub___20151003,iot.blub___20151004,iot.blub___20151005,iot.blub___20151006,iot.blub___20151007,iot.blub___20151008,iot.blub___20151009,iot.blub___20151010\n \n        where  True \n        group by date\n \n        \n        \n        ignore case\n    ", udfs=[])
@@ -117,10 +118,10 @@ class ReportRegistedTests(TestCase):
     def test_query(self):
         api = ReportApi.objects.create(
                     name="test",
+                    report=self.report
                 )
         api.cols = self.report.cols.filter(key__in=['time', 'year', 'weekday', 'month', 'date'])[:5]
         api.save()
-        self.report.apis.add(api)
         self.assertEqual(api.query(self.report).querystr, "\n        select time as time,STRFTIME_UTC_USEC(time, '%Y-%m-%d') as date,STRFTIME_UTC_USEC(time, '%Y-%m') as month,STRFTIME_UTC_USEC(time, '%Y') as year,DAYOFWEEK(time) as weekday\n \n        from iot.blub___20151001,iot.blub___20151002,iot.blub___20151003,iot.blub___20151004,iot.blub___20151005,iot.blub___20151006,iot.blub___20151007,iot.blub___20151008,iot.blub___20151009,iot.blub___20151010\n \n        where  True \n        \n        \n        \n        ignore case\n    ")
 
 
@@ -130,10 +131,10 @@ class ReportRegistedTests(TestCase):
         api = ReportApi.objects.create(
                     name="test",
                     mode="TimeReportApi",
+                    report=self.report,
                 )
         api.cols = cols
         api.save()
-        self.report.apis.add(api)
         
 
         resp = self.client.post(reverse('report:api', kwargs={"group":"iot", "report": "blub", "api": "test"}), {"__mapper": "function(total, date){return {'key': date, 'value': total}}", "__reducer": "function(key, values){return [key, sum(values)]}"})
