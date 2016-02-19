@@ -1,15 +1,70 @@
 -r requirements.txt
-django-bootstrap3-sass
+# A simple Django app to import bootstrap3-sass.
+# https://pypi.python.org/pypi/django-bootstrap3-sass/3.3.2.2
+django-bootstrap3-sass==3.3.2.2
+
+
+# Reusable, generic mixins for Django
+# https://pypi.python.org/pypi/django-braces/1.8.1
 django-braces==1.8.1
-django-compressor==1.4
+
+
+# Compresses linked and inline JavaScript or CSS into single cached files.
+# https://pypi.python.org/pypi/django_compressor/1.4
+django_compressor==1.4
+
+
+# Best way to have Django DRY forms
+# https://pypi.python.org/pypi/django-crispy-forms/1.5.2
 django-crispy-forms==1.5.2
-django-debug-toolbar
-django-extensions
-django-filter
-pytest
-pytest-django
-mock
+
+
+# A configurable set of panels that display various debug information about the current request/response.
+# https://pypi.python.org/pypi/django-debug-toolbar/1.4
+django-debug-toolbar==1.4
+
+
+# Extensions for Django
+# https://pypi.python.org/pypi/django-extensions/1.6.1
+django-extensions==1.6.1
+
+
+# Django-filter is a reusable Django application for allowing users to filter querysets dynamically.
+# https://pypi.python.org/pypi/django-filter/0.12.0
+django-filter==0.12.0
+
+
+# pytest: simple powerful testing with Python
+# https://pypi.python.org/pypi/pytest/2.8.7
+pytest==2.8.7
+
+
+# A Django plugin for py.test.
+# https://pypi.python.org/pypi/pytest-django/2.9.1
+pytest-django==2.9.1
+
+
+# Rolling backport of unittest.mock for all Pythons
+# https://pypi.python.org/pypi/mock/1.3.0
+mock==1.3.0
+
+
+# Object-oriented alternative to os/os.path/shutil
+# https://pypi.python.org/pypi/Unipath/1.0
 Unipath==1.0
+
+
+# Glue is a simple command line tool to generate sprites.
+# https://pypi.python.org/pypi/glue/0.11.1
 glue==0.11.1
+
+
+# Logging utilities
+# https://pypi.python.org/pypi/logutils/0.3.3
 logutils>=0.3.3
+
+
+# Faker is a Python package that generates fake data for you.
+# https://pypi.python.org/pypi/fake-factory/0.5.3
 fake-factory==0.5.3
+
