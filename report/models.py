@@ -186,7 +186,7 @@ class ReportQuery(object):
 
         if not job_id:
             job_id = bigquery.create_job(query=querystr, udfs=udfs)
-            cache.set(key, False)
+            cache.set(key, job_id)
 
         print querystr
         try:
